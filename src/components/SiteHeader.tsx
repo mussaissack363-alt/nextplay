@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Logo from "./Logo";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -22,20 +23,7 @@ export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-stone-200/60 bg-[#fbf8f3]/85 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-6 sm:px-8">
-        <Link href="/" className="group flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-stone-950 text-white shadow-md shadow-stone-900/10 transition-transform group-hover:scale-105">
-            <svg
-              viewBox="0 0 24 24"
-              className="ml-0.5 h-4 w-4 fill-current"
-              aria-hidden
-            >
-              <path d="M7 4.5v15a1 1 0 0 0 1.52.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5Z" />
-            </svg>
-          </span>
-          <span className="text-xl font-bold tracking-tight text-stone-950">
-            Next<span className="text-orange-600">Play</span>
-          </span>
-        </Link>
+        <Logo />
 
         <nav className="flex items-center gap-1.5 rounded-full border border-stone-300/40 bg-stone-200/50 p-1.5 backdrop-blur-sm">
           {LINKS.map((link) => {

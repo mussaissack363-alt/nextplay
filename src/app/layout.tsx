@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
+import { LogoMark } from "@/components/Logo";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-pjs",
@@ -41,10 +42,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="flex-1">{children}</main>
         <footer className="border-t border-line bg-stone-100/60 py-10">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 sm:flex-row sm:px-8">
-            <p className="text-xs text-stone-500">
-              <span className="font-bold text-stone-800">NextPlay</span>
-              <span className="mx-2">—</span>
-              The gamer backlog antidote. Built with zero tracking algorithms.
+            <p className="flex items-center gap-2.5 text-xs text-stone-500">
+              <LogoMark className="h-7 w-7" />
+              <span>
+                <span className="font-bold text-stone-800">NextPlay</span>
+                <span className="mx-2">—</span>
+                The gamer backlog antidote. Built with zero tracking algorithms.
+              </span>
             </p>
             <div className="flex items-center gap-6 text-xs font-medium text-stone-500">
               <a
