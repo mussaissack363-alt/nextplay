@@ -29,7 +29,7 @@ export const PLATFORMS: { id: number; slug: string; label: string }[] = [
 
 export const GENRES: { slug: string; label: string }[] = [
   { slug: "action", label: "Action" },
-  { slug: "rpg", label: "RPG" },
+  { slug: "role-playing-games-rpg", label: "RPG" },
   { slug: "shooter", label: "Shooter" },
   { slug: "adventure", label: "Adventure" },
   { slug: "strategy", label: "Strategy" },

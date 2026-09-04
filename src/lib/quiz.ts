@@ -87,7 +87,7 @@ const PLATFORM_IDS: Record<string, number[]> = {
 
 const GENRE_SLUGS: Record<string, string[]> = {
   action: ["action", "fighting"],
-  rpg: ["rpg"],
+  rpg: ["role-playing-games-rpg"],
   shooter: ["shooter"],
   adventure: ["adventure"],
   strategy: ["strategy", "puzzle"],

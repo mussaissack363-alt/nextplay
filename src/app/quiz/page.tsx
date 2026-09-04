@@ -259,25 +259,72 @@ export default function QuizPage() {
   );
 }
 
+/**
+ * Fetch recommendations, progressively relaxing filters so a picky combo
+ * can never empty the result list. Order of relaxation: tags → genres →
+ * platforms → no filters at all (top-rated).
+ */
 async function getRecommendations(
   answers: QuizAnswers,
 ): Promise<{ games: RawgGame[]; needsKey: boolean }> {
-  const params = buildRecQuery(answers);
-  const query = new URLSearchParams(params);
-  const res = await fetch(`/api/recommend?${query.toString()}`);
-  const data = (await res.json()) as { games?: RawgGame[]; needsKey?: boolean };
+  const fullParams = buildRecQuery(answers);
 
-  let candidates: RawgGame[] = data.games ?? [];
+  // Build attempts from strictest to loosest. Each one clears a filter.
+  // The final { } is a guaranteed non-empty fallback (top-rated games).
+  // (undefined clears a key — stripped out below before fetching.)
+  const attempts: { params: Record<string, string | undefined>; notes: string }[] = [
+    { params: fullParams, notes: "full" },
+    { params: { ...fullParams, tags: undefined }, notes: "no tags" },
+    {
+      params: { ...fullParams, tags: undefined, genres: undefined },
+      notes: "no tags/genres",
+    },
+    {
+      params: {
+        ...fullParams,
+        tags: undefined,
+        genres: undefined,
+        platforms: undefined,
+      },
+      notes: "no tags/genres/platforms",
+    },
+    { params: {}, notes: "top-rated" },
+  ];
 
-  // Some tag combos return nothing — retry without the mood/player tags.
-  if (candidates.length === 0 && params.tags) {
-    const relaxed = { ...params };
-    delete relaxed.tags;
-    const retryRes = await fetch(
-      `/api/recommend?${new URLSearchParams(relaxed).toString()}`,
+  // Dedupe by query string so identical attempts collapse (e.g. all "any" answers).
+  const seen = new Set<string>();
+  const uniqueAttempts: { params: Record<string, string | undefined>; notes: string }[] = [];
+  for (const attempt of attempts) {
+    const clean: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(attempt.params)) {
+      if (v !== undefined) clean[k] = v;
+    }
+    const key = new URLSearchParams(clean as Record<string, string>).toString();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueAttempts.push({ params: clean, notes: attempt.notes });
+  }
+
+  let candidates: RawgGame[] = [];
+  let needsKey = false;
+
+  for (const { params } of uniqueAttempts) {
+    const res = await fetch(
+      `/api/recommend?${new URLSearchParams(
+        params as Record<string, string>,
+      ).toString()}`,
     );
-    const retryData = (await retryRes.json()) as { games?: RawgGame[] };
-    candidates = retryData.games ?? [];
+    let data: { games?: RawgGame[]; needsKey?: boolean } = {};
+    try {
+      data = (await res.json()) as { games?: RawgGame[]; needsKey?: boolean };
+    } catch {
+      continue;
+    }
+
+    needsKey = Boolean(data.needsKey);
+    if (needsKey) break; // no point retrying without a key
+    candidates = data.games ?? [];
+    if (candidates.length > 0) break;
   }
 
   const limit = playtimeLimit(answers.time);
@@ -298,5 +345,5 @@ async function getRecommendations(
     picked = candidates.slice(0, MAX);
   }
 
-  return { games: picked, needsKey: Boolean(data.needsKey) };
+  return { games: picked, needsKey };
 }
