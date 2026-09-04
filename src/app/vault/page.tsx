@@ -18,8 +18,6 @@ import {
   vaultMonthLabel,
 } from "@/lib/vault";
 
-export const revalidate = 3600;
-
 export const metadata: Metadata = {
   title: "The Vault — Older Games Worth Playing Today",
   description:

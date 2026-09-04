@@ -13,6 +13,7 @@ export type RawgGame = {
   playtime: number;
   genres: { id: number; slug: string; name: string }[];
   platforms: { platform: RawgPlatform }[];
+  tags: { id: number; slug: string; name: string }[];
   esrb_rating: { name: string } | null;
 };
 
@@ -129,6 +130,7 @@ export async function fetchGames(
     ...g,
     platforms: Array.isArray(g.platforms) ? g.platforms : [],
     genres: Array.isArray(g.genres) ? g.genres : [],
+    tags: Array.isArray(g.tags) ? g.tags : [],
   }));
 }
 

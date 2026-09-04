@@ -12,8 +12,6 @@ import {
   type RawgGame,
 } from "@/lib/rawg";
 
-export const revalidate = 3600;
-
 export const metadata: Metadata = {
   title: "New Games This Month — Upcoming Releases Guide",
   description:

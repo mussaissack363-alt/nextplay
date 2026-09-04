@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import GameCard from "./GameCard";
 import { GENRES, PLATFORMS, type RawgGame, type ReleaseWindow } from "@/lib/rawg";
 
@@ -20,78 +20,54 @@ const PAGE_SIZE = 40;
 export default function ReleaseExplorer({
   initialGames,
 }: {
-  initialGames: RawgGame[];
+  initialGames: Record<ReleaseWindow, RawgGame[]>;
 }) {
   const [window, setWindow] = useState<ReleaseWindow>("week");
   const [platforms, setPlatforms] = useState<number[]>([]);
   const [genres, setGenres] = useState<string[]>([]);
-  const [games, setGames] = useState<RawgGame[]>(initialGames);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(initialGames.length >= PAGE_SIZE);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState(false);
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
-  const buildParams = (pageNum: number) => {
-    const params = new URLSearchParams({ window, page: String(pageNum) });
-    if (platforms.length > 0) params.set("platforms", platforms.join(","));
-    if (genres.length > 0) params.set("genres", genres.join(","));
-    return params;
+  const filtered = useMemo(() => {
+    const pool = initialGames[window] ?? [];
+    return pool.filter((g) => {
+      if (platforms.length > 0) {
+        const ids = g.platforms.map((p) => p.platform.id);
+        if (!platforms.some((id) => ids.includes(id))) return false;
+      }
+      if (genres.length > 0) {
+        const slugs = g.genres.map((gen) => gen.slug);
+        if (!genres.some((slug) => slugs.includes(slug))) return false;
+      }
+      return true;
+    });
+  }, [initialGames, window, platforms, genres]);
+
+  const resetFilters = () => {
+    setPlatforms([]);
+    setGenres([]);
+    setVisible(PAGE_SIZE);
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-
-    fetch(`/api/releases?${buildParams(1).toString()}`)
-      .then((res) => res.json())
-      .then((data: { games?: RawgGame[]; hasMore?: boolean }) => {
-        if (cancelled) return;
-        setGames(data.games ?? []);
-        setPage(1);
-        setHasMore(data.hasMore ?? false);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [window, platforms, genres]);
-
-  const loadMore = async () => {
-    if (loadingMore) return;
-    setLoadingMore(true);
-    const next = page + 1;
-    try {
-      const res = await fetch(`/api/releases?${buildParams(next).toString()}`);
-      const data = (await res.json()) as {
-        games?: RawgGame[];
-        hasMore?: boolean;
-      };
-      const batch = data.games ?? [];
-      // Avoid duplicate ids when the data shifts between pages.
-      setGames((prev) => {
-        const seen = new Set(prev.map((g) => g.id));
-        return [...prev, ...batch.filter((g) => !seen.has(g.id))];
-      });
-      setPage(next);
-      setHasMore(data.hasMore ?? false);
-    } catch {
-      // Ran past the last page — stop offering load more.
-      setHasMore(false);
-    } finally {
-      setLoadingMore(false);
-    }
+  const selectWindow = (w: ReleaseWindow) => {
+    setWindow(w);
+    setVisible(PAGE_SIZE);
   };
 
   const toggle = <T,>(list: T[], value: T): T[] =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+
+  const togglePlatform = (id: number) => {
+    setPlatforms(toggle(platforms, id));
+    setVisible(PAGE_SIZE);
+  };
+
+  const toggleGenre = (slug: string) => {
+    setGenres(toggle(genres, slug));
+    setVisible(PAGE_SIZE);
+  };
+
+  const shown = filtered.slice(0, visible);
+  const hasMore = visible < filtered.length;
 
   return (
     <div>
@@ -101,7 +77,7 @@ export default function ReleaseExplorer({
           {WINDOWS.map((w) => (
             <button
               key={w.value}
-              onClick={() => setWindow(w.value)}
+              onClick={() => selectWindow(w.value)}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
                 window === w.value
                   ? "bg-card text-ink shadow-sm"
@@ -125,7 +101,7 @@ export default function ReleaseExplorer({
                 return (
                   <button
                     key={p.id}
-                    onClick={() => setPlatforms(toggle(platforms, p.id))}
+                    onClick={() => togglePlatform(p.id)}
                     className={`${CHIP} ${active ? CHIP_ON : CHIP_OFF}`}
                   >
                     {p.label}
@@ -146,7 +122,7 @@ export default function ReleaseExplorer({
                 return (
                   <button
                     key={g.slug}
-                    onClick={() => setGenres(toggle(genres, g.slug))}
+                    onClick={() => toggleGenre(g.slug)}
                     className={`${CHIP} ${active ? CHIP_ON : CHIP_OFF}`}
                   >
                     {g.label}
@@ -155,25 +131,21 @@ export default function ReleaseExplorer({
               })}
             </div>
           </div>
+
+          {(platforms.length > 0 || genres.length > 0) && (
+            <button
+              onClick={resetFilters}
+              className="text-xs font-semibold text-orange-600 underline decoration-orange-300 underline-offset-2 hover:text-orange-500"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       </div>
 
       {/* Results */}
       <div className="mt-8">
-        {loading ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-72 animate-pulse rounded-2xl border border-line bg-stone-200/60"
-              />
-            ))}
-          </div>
-        ) : error ? (
-          <p className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">
-            Couldn&apos;t reach the game database. Try again in a minute.
-          </p>
-        ) : games.length === 0 ? (
+        {shown.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-stone-300 bg-card p-12 text-center">
             <p className="text-3xl">🛌</p>
             <p className="mt-3 font-display text-base font-bold text-ink">
@@ -186,29 +158,23 @@ export default function ReleaseExplorer({
         ) : (
           <>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {games.map((game) => (
+              {shown.map((game) => (
                 <GameCard key={game.id} game={game} />
               ))}
             </div>
 
             <div className="mt-10 flex flex-col items-center gap-3">
               <p className="text-sm text-stone-500">
-                {games.length} game{games.length === 1 ? "" : "s"} shown
+                {filtered.length} game{filtered.length === 1 ? "" : "s"} in this
+                window
+                {platforms.length > 0 || genres.length > 0 ? " with these filters" : ""}
               </p>
               {hasMore && (
                 <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3 text-sm font-semibold text-white transition-all hover:bg-stone-800 hover:shadow-lg hover:shadow-stone-900/15 disabled:opacity-60"
+                  onClick={() => setVisible(visible + PAGE_SIZE)}
+                  className="inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3 text-sm font-semibold text-white transition-all hover:bg-stone-800 hover:shadow-lg hover:shadow-stone-900/15"
                 >
-                  {loadingMore ? (
-                    <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Loading more…
-                    </>
-                  ) : (
-                    <>Load more games ↓</>
-                  )}
+                  Load more games ↓
                 </button>
               )}
             </div>

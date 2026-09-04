@@ -2,8 +2,6 @@ import Link from "next/link";
 import AnimeExplorer from "@/components/AnimeExplorer";
 import { currentSeasonLabel, fetchSeasonalAnime, type Anime } from "@/lib/anime";
 
-export const revalidate = 3600;
-
 export const metadata = {
   title: "Anime Airing This Season — What to Watch Now",
   description:

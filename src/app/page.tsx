@@ -13,8 +13,6 @@ import {
 import { currentSeasonLabel, fetchSeasonalAnime, type Anime } from "@/lib/anime";
 import { dailyVaultPicks, fetchOlderPool } from "@/lib/vault";
 
-export const revalidate = 3600;
-
 function platformsList(game: RawgGame, max = 4): string {
   return [
     ...new Set(

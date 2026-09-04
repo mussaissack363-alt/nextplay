@@ -1,0 +1,57 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Rebuild daily so the Vault's daily picks, release windows and anime
+    # season stay fresh without needing a code change each day.
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Data (RAWG + AniList) is fetched at build time, so the API key is
+      # only needed here — it never ships to the browser.
+      - name: Build static export
+        run: npm run build
+        env:
+          RAWG_API_KEY: ${{ secrets.RAWG_API_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://mussaissack363-alt.github.io/nextplay
+          NEXT_PUBLIC_BASE_PATH: /nextplay
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

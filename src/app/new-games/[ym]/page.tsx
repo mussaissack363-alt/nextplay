@@ -12,8 +12,6 @@ import {
   type RawgGame,
 } from "@/lib/rawg";
 
-export const revalidate = 3600;
-
 const MONTH_RE = /^(\d{4})-(\d{2})$/;
 
 function parseYm(ym: string): { year: number; month: number } | null {

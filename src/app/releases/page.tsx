@@ -3,13 +3,12 @@ import Link from "next/link";
 import ReleaseExplorer from "@/components/ReleaseExplorer";
 import SetupBanner from "@/components/SetupBanner";
 import {
-  fetchGames,
+  fetchAllGames,
   getApiKey,
   windowDates,
   type RawgGame,
+  type ReleaseWindow,
 } from "@/lib/rawg";
-
-export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Release Radar — new games this week and month",
@@ -17,17 +16,28 @@ export const metadata: Metadata = {
     "Every game releasing today, this week, and this month — filter by platform and genre.",
 };
 
+const WINDOWS: ReleaseWindow[] = ["today", "week", "month"];
+const PER_WINDOW = 120; // 3 RAWG pages per window, baked at build time
+
 export default async function ReleasesPage() {
   const needsKey = !getApiKey();
-  let games: RawgGame[] = [];
+  const initialGames: Record<ReleaseWindow, RawgGame[]> = {
+    today: [],
+    week: [],
+    month: [],
+  };
 
   if (!needsKey) {
-    try {
-      const { start, end } = windowDates("week");
-      games =
-        (await fetchGames({ dates: `${start},${end}`, ordering: "-released" }, 40)) ?? [];
-    } catch {
-      games = [];
+    for (const window of WINDOWS) {
+      try {
+        const { start, end } = windowDates(window);
+        initialGames[window] = await fetchAllGames(
+          { dates: `${start},${end}`, ordering: "-released" },
+          PER_WINDOW,
+        );
+      } catch {
+        initialGames[window] = [];
+      }
     }
   }
 
@@ -51,7 +61,7 @@ export default async function ReleasesPage() {
         guide.
       </p>
       <div className="mt-10">
-        {needsKey ? <SetupBanner /> : <ReleaseExplorer initialGames={games} />}
+        {needsKey ? <SetupBanner /> : <ReleaseExplorer initialGames={initialGames} />}
       </div>
     </div>
   );

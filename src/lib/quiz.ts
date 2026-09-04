@@ -1,3 +1,5 @@
+import type { RawgGame } from "./rawg";
+
 export type QuizAnswers = {
   platform: string;
   genre: string;
@@ -133,6 +135,93 @@ export function playtimeLimit(time: string): number | null {
   if (time === "short") return 10;
   if (time === "medium") return 40;
   return null;
+}
+
+/**
+ * Recommend games from a build-time pool, mirroring the old /api/recommend
+ * behaviour: filter by platforms, genres and tags, relaxing each group in
+ * turn so a picky combo can never empty the results. Runs entirely in the
+ * browser — no API calls, so it works on static hosting.
+ */
+export function recommendFromPool(
+  pool: RawgGame[],
+  answers: QuizAnswers,
+): RawgGame[] {
+  const platformIds = PLATFORM_IDS[answers.platform] ?? [];
+  const genreSlugs = GENRE_SLUGS[answers.genre] ?? [];
+  const tagSlugs = [
+    ...(PLAYER_TAGS[answers.players] ?? []),
+    ...(MOOD_TAGS[answers.mood] ?? []),
+  ];
+
+  const matches = (
+    g: RawgGame,
+    usePlatforms: boolean,
+    useGenres: boolean,
+    useTags: boolean,
+  ) => {
+    if (
+      usePlatforms &&
+      platformIds.length > 0 &&
+      !g.platforms.some((p) => platformIds.includes(p.platform.id))
+    ) {
+      return false;
+    }
+    if (
+      useGenres &&
+      genreSlugs.length > 0 &&
+      !g.genres.some((x) => genreSlugs.includes(x.slug))
+    ) {
+      return false;
+    }
+    if (
+      useTags &&
+      tagSlugs.length > 0 &&
+      !g.tags.some((x) => tagSlugs.includes(x.slug))
+    ) {
+      return false;
+    }
+    return true;
+  };
+
+  // Strictest → loosest. The final attempt matches the whole pool.
+  const attempts: [boolean, boolean, boolean][] = [
+    [true, true, true],
+    [true, true, false],
+    [true, false, false],
+    [false, false, false],
+  ];
+
+  let candidates: RawgGame[] = [];
+  for (const [usePlatforms, useGenres, useTags] of attempts) {
+    const found = pool.filter((g) =>
+      matches(g, usePlatforms, useGenres, useTags),
+    );
+    if (found.length > 0) {
+      candidates = found;
+      break;
+    }
+  }
+  if (candidates.length === 0) candidates = pool;
+
+  const MAX = 6;
+  const limit = playtimeLimit(answers.time);
+  const picked: RawgGame[] = [];
+  if (limit !== null) {
+    const eligible = candidates.filter(
+      (g) => g.playtime === 0 || g.playtime <= limit,
+    );
+    picked.push(...eligible.slice(0, MAX));
+    // Top up from the full list if the time filter was too strict.
+    for (const g of candidates) {
+      if (picked.length >= MAX) break;
+      if (!picked.some((p) => p.id === g.id)) picked.push(g);
+    }
+  } else {
+    picked.push(...candidates.slice(0, MAX));
+  }
+
+  return picked;
 }
 
 export const MOOD_HEADLINES: Record<string, string> = {
