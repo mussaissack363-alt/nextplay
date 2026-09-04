@@ -25,7 +25,7 @@ export default async function ReleasesPage() {
     try {
       const { start, end } = windowDates("week");
       games =
-        (await fetchGames({ dates: `${start},${end}`, ordering: "-released" }, 24)) ?? [];
+        (await fetchGames({ dates: `${start},${end}`, ordering: "-released" }, 40)) ?? [];
     } catch {
       games = [];
     }

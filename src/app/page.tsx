@@ -11,6 +11,7 @@ import {
   type RawgGame,
 } from "@/lib/rawg";
 import { currentSeasonLabel, fetchSeasonalAnime, type Anime } from "@/lib/anime";
+import { dailyVaultPicks, fetchOlderPool } from "@/lib/vault";
 
 export const revalidate = 3600;
 
@@ -53,6 +54,15 @@ export default async function Home() {
     seasonalAnime = await fetchSeasonalAnime(5);
   } catch {
     seasonalAnime = [];
+  }
+
+  let vaultPicks: RawgGame[] = [];
+  if (!needsKey) {
+    try {
+      vaultPicks = dailyVaultPicks(await fetchOlderPool(120));
+    } catch {
+      vaultPicks = [];
+    }
   }
 
   const covers = games.filter((g) => g.background_image).slice(0, 3);
@@ -681,6 +691,76 @@ export default async function Home() {
             )}
           </div>
         </section>
+
+        {/* ============ THE VAULT ============ */}
+        {vaultPicks.length > 0 && (
+          <section className="relative border-t border-stone-200/70 pt-14 pb-20">
+            <div className="mx-auto max-w-7xl px-6 sm:px-8">
+              <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+                <div>
+                  <div className="mb-2 flex items-center gap-2 text-xs font-black tracking-widest text-orange-600 uppercase">
+                    <span className="h-2 w-2 rounded-full bg-orange-500" />
+                    The Vault · today&apos;s five
+                  </div>
+                  <h2 className="text-3xl font-black tracking-tight text-stone-950 sm:text-4xl">
+                    Older games. Still great. Fresh picks daily.
+                  </h2>
+                  <p className="mt-1 text-sm font-normal text-stone-500">
+                    Well-rated classics that aren&apos;t new anymore — same five
+                    for everyone, gone tomorrow.
+                  </p>
+                </div>
+                <Link
+                  href="/vault"
+                  className="inline-flex items-center gap-2 self-start rounded-full border border-stone-200 bg-white px-5 py-2.5 text-xs font-bold text-stone-900 shadow-xs transition-all hover:bg-stone-100 hover:text-orange-600 sm:self-auto"
+                >
+                  <span>Open the Vault</span>
+                  <span>→</span>
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                {vaultPicks.map((g) => (
+                  <Link
+                    key={g.id}
+                    href="/vault"
+                    className="group overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                  >
+                    <div className="relative h-40 w-full overflow-hidden bg-stone-100 sm:h-48">
+                      {g.background_image ? (
+                        <Image
+                          src={g.background_image}
+                          alt={g.name}
+                          fill
+                          sizes="(min-width: 1024px) 20vw, (min-width: 768px) 33vw, 50vw"
+                          className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-3xl">
+                          🎮
+                        </div>
+                      )}
+                      {g.metacritic != null && (
+                        <span className="absolute top-2.5 right-2.5 rounded-full bg-stone-950/85 px-2 py-0.5 text-[10px] font-bold text-amber-300 backdrop-blur-sm">
+                          {g.metacritic}
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h4 className="line-clamp-1 text-sm font-bold text-stone-900 transition-colors group-hover:text-orange-600">
+                        {g.name}
+                      </h4>
+                      <p className="mt-1 text-[11px] text-stone-500">
+                        {(g.genres[0]?.name ?? "Older gem")} ·{" "}
+                        {g.released?.slice(0, 4) ?? "TBA"}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ============ NOW AIRING ANIME ============ */}
         {seasonalAnime.length > 0 && (

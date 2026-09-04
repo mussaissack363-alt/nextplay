@@ -15,6 +15,8 @@ const CHIP =
 const CHIP_OFF = "border-line bg-card text-stone-600 hover:border-stone-400 hover:text-ink";
 const CHIP_ON = "border-ink bg-ink text-white";
 
+const PAGE_SIZE = 40;
+
 export default function ReleaseExplorer({
   initialGames,
 }: {
@@ -24,23 +26,31 @@ export default function ReleaseExplorer({
   const [platforms, setPlatforms] = useState<number[]>([]);
   const [genres, setGenres] = useState<string[]>([]);
   const [games, setGames] = useState<RawgGame[]>(initialGames);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(initialGames.length >= PAGE_SIZE);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
+
+  const buildParams = (pageNum: number) => {
+    const params = new URLSearchParams({ window, page: String(pageNum) });
+    if (platforms.length > 0) params.set("platforms", platforms.join(","));
+    if (genres.length > 0) params.set("genres", genres.join(","));
+    return params;
+  };
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
 
-    const params = new URLSearchParams({ window });
-    if (platforms.length > 0) params.set("platforms", platforms.join(","));
-    if (genres.length > 0) params.set("genres", genres.join(","));
-
-    fetch(`/api/releases?${params.toString()}`)
+    fetch(`/api/releases?${buildParams(1).toString()}`)
       .then((res) => res.json())
-      .then((data: { games?: RawgGame[] }) => {
+      .then((data: { games?: RawgGame[]; hasMore?: boolean }) => {
         if (cancelled) return;
         setGames(data.games ?? []);
+        setPage(1);
+        setHasMore(data.hasMore ?? false);
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -53,6 +63,32 @@ export default function ReleaseExplorer({
       cancelled = true;
     };
   }, [window, platforms, genres]);
+
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    const next = page + 1;
+    try {
+      const res = await fetch(`/api/releases?${buildParams(next).toString()}`);
+      const data = (await res.json()) as {
+        games?: RawgGame[];
+        hasMore?: boolean;
+      };
+      const batch = data.games ?? [];
+      // Avoid duplicate ids when the data shifts between pages.
+      setGames((prev) => {
+        const seen = new Set(prev.map((g) => g.id));
+        return [...prev, ...batch.filter((g) => !seen.has(g.id))];
+      });
+      setPage(next);
+      setHasMore(data.hasMore ?? false);
+    } catch {
+      // Ran past the last page — stop offering load more.
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const toggle = <T,>(list: T[], value: T): T[] =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -126,7 +162,7 @@ export default function ReleaseExplorer({
       <div className="mt-8">
         {loading ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 9 }).map((_, i) => (
               <div
                 key={i}
                 className="h-72 animate-pulse rounded-2xl border border-line bg-stone-200/60"
@@ -148,11 +184,35 @@ export default function ReleaseExplorer({
             </p>
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {games.map((game) => (
-              <GameCard key={game.id} game={game} />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {games.map((game) => (
+                <GameCard key={game.id} game={game} />
+              ))}
+            </div>
+
+            <div className="mt-10 flex flex-col items-center gap-3">
+              <p className="text-sm text-stone-500">
+                {games.length} game{games.length === 1 ? "" : "s"} shown
+              </p>
+              {hasMore && (
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3 text-sm font-semibold text-white transition-all hover:bg-stone-800 hover:shadow-lg hover:shadow-stone-900/15 disabled:opacity-60"
+                >
+                  {loadingMore ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Loading more…
+                    </>
+                  ) : (
+                    <>Load more games ↓</>
+                  )}
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

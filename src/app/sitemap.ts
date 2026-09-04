@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/releases`, lastModified, changeFrequency: "hourly", priority: 0.9 },
     { url: `${base}/new-games`, lastModified, changeFrequency: "weekly", priority: 0.9 },
     { url: `${base}/anime`, lastModified, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${base}/vault`, lastModified, changeFrequency: "daily", priority: 0.8 },
     { url: `${base}/shelf`, lastModified, changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/quiz`, lastModified, changeFrequency: "monthly", priority: 0.6 },
   ];

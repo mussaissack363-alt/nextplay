@@ -7,6 +7,7 @@ import Logo from "./Logo";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/releases", label: "Release Radar" },
+  { href: "/vault", label: "The Vault" },
   { href: "/anime", label: "Anime" },
   { href: "/shelf", label: "My Shelf" },
   { href: "/quiz", label: "Quiz" },
